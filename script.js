@@ -570,6 +570,43 @@ class QRScanner {
     hideError() {
         this.errorDiv.style.display = 'none';
     }
+    
+    // Новый метод для отправки через n8n webhook
+    async sendToN8NWebhook(qrText, format) {
+        // Замените на ваш реальный URL webhook в n8n
+        const webhookUrl = 'https://your-n8n-instance.app.n8n.cloud/webhook/qr-scanner';
+        
+        const data = {
+            qr_text: qrText,
+            format: format,
+            timestamp: new Date().toISOString(),
+            user_id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || null,
+            username: window.Telegram?.WebApp?.initDataUnsafe?.user?.username || null,
+            first_name: window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name || null
+        };
+        
+        try {
+            console.log('📤 Sending to n8n webhook:', data);
+            
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                console.log('✅ Data sent to n8n webhook successfully');
+                return true;
+            } else {
+                console.error('❌ n8n webhook responded with:', response.status, response.statusText);
+            }
+        } catch (error) {
+            console.error('❌ Error sending to n8n webhook:', error);
+        }
+        return false;
+    }
 }
 
 // Инициализация приложения
