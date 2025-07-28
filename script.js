@@ -499,7 +499,7 @@ class QRScanner {
                 format: format,
                 timestamp: Date.now()
             }));
-            
+  
             // Показываем кнопку "Закрыть"
             tg.MainButton.setText('Отправить результат');
             tg.MainButton.show();
@@ -531,7 +531,7 @@ class QRScanner {
     // Новый метод для отправки через n8n webhook
     async sendToN8NWebhook(qrText, format) {
         // Замените на ваш реальный URL webhook в n8n
-        const webhookUrl = 'https://your-n8n-instance.app.n8n.cloud/webhook/qr-scanner';
+        const webhookUrl = 'https://codanetn8n.ru/webhook/04a25c25-4aa8-4688-b395-a1681641552b';
         
         const data = {
             qr_text: qrText,
@@ -544,6 +544,7 @@ class QRScanner {
         
         try {
             console.log('📤 Sending to n8n webhook:', data);
+            console.log('📡 Webhook URL:', webhookUrl);
             
             const response = await fetch(webhookUrl, {
                 method: 'POST',
@@ -552,6 +553,12 @@ class QRScanner {
                 },
                 body: JSON.stringify(data)
             });
+            
+            console.log('🔄 Response status:', response.status);
+            console.log('🔄 Response headers:', [...response.headers.entries()]);
+            
+            const responseText = await response.text();
+            console.log('📨 Response body:', responseText);
             
             if (response.ok) {
                 console.log('✅ Data sent to n8n webhook successfully');
