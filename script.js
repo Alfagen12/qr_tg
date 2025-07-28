@@ -11,9 +11,7 @@ class QRScanner {
         
         // Элементы интерфейса
         this.startBtn = document.getElementById('startScan');
-        this.stopBtn                    // Попытка 2: ОТКЛЮЧЕНО - вызывает диалог поделиться
-                    // window.open(telegramUrl, '_blank');
-                    // console.log('📱 Opened Telegram message dialog');document.getElementById('stopScan');
+        this.stopBtn = document.getElementById('stopScan');
         this.switchBtn = document.getElementById('switchCamera');
         this.checkPermissionsBtn = document.getElementById('checkPermissions');
         this.requestPermissionsBtn = document.getElementById('requestPermissions');
