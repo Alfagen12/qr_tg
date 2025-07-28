@@ -378,38 +378,13 @@ class QRScanner {
     showResult(value, format) {
         this.resultText.textContent = value;
         this.resultDiv.style.display = 'block';
-        this.showStatus(`QR-код успешно отсканирован! Формат: ${format}`);
+        // Убираем сложный статус, показываем просто результат
     }
     
     hideResult() {
         this.resultDiv.style.display = 'none';
     }
-    
-    async copyResult() {
-        const text = this.resultText.textContent;
-        try {
-            await navigator.clipboard.writeText(text);
-            this.showStatus('Результат скопирован в буфер обмена');
-        } catch (error) {
-            console.error('Ошибка копирования:', error);
-            this.showError('Не удалось скопировать текст');
-        }
-    }
-    
-    shareResult() {
-        const text = this.resultText.textContent;
-        
-        if (navigator.share) {
-            navigator.share({
-                title: 'QR Scanner Result',
-                text: text
-            }).catch(error => console.error('Ошибка sharing:', error));
-        } else {
-            // Fallback: копируем в буфер
-            this.copyResult();
-        }
-    }
-    
+
     sendResultToBot() {
         const text = this.resultText.textContent;
         if (!text) {
