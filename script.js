@@ -417,7 +417,29 @@ class QRScanner {
     sendResultToBot() {
         const text = this.resultText.textContent;
         if (text) {
-            this.sendToTelegramN8N(text, 'qr_code');
+            // Попробуем отправить как обычное сообщение
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                
+                // Альтернативный способ - открыть чат и отправить сообщение
+                const botUsername = '@PayCryptoBot'; // Замените на имя вашего бота
+                const message = encodeURIComponent(`QR-код: ${text}`);
+                
+                // Попытка отправить через Web App
+                try {
+                    tg.sendData(text);
+                    this.showStatus(`✅ Данные отправлены в бота через WebApp`);
+                } catch (error) {
+                    console.error('WebApp sendData failed:', error);
+                    
+                    // Fallback - попытаться открыть чат с ботом
+                    const telegramUrl = `tg://resolve?domain=${botUsername.replace('@', '')}&text=${message}`;
+                    window.open(telegramUrl, '_blank');
+                    this.showStatus(`📱 Открыт чат с ботом для отправки сообщения`);
+                }
+            } else {
+                this.showStatus('❌ Telegram WebApp недоступен');
+            }
         } else {
             this.showStatus('❌ Нет данных для отправки');
         }
@@ -432,12 +454,33 @@ class QRScanner {
                 version: tg.version,
                 platform: tg.platform,
                 isExpanded: tg.isExpanded,
-                viewportHeight: tg.viewportHeight
+                viewportHeight: tg.viewportHeight,
+                initData: tg.initData
             });
             
-            // Сначала отправляем данные боту
-            console.log('📤 Sending data via tg.sendData:', value);
-            tg.sendData(value);
+            // Отправляем данные разными способами для совместимости
+            try {
+                // Способ 1: Простая отправка текста
+                console.log('📤 Method 1: Sending raw text:', value);
+                tg.sendData(value);
+                
+                // Способ 2: Отправка как JSON
+                const jsonData = JSON.stringify({
+                    action: 'qr_scanned',
+                    text: value,
+                    format: format
+                });
+                console.log('📤 Method 2: Sending JSON:', jsonData);
+                
+                // Небольшая задержка и повторная отправка JSON
+                setTimeout(() => {
+                    tg.sendData(jsonData);
+                }, 100);
+                
+            } catch (error) {
+                console.error('❌ Error sending data:', error);
+                this.showStatus('❌ Ошибка отправки данных: ' + error.message);
+            }
             
             // Очищаем предыдущие обработчики кнопки
             tg.MainButton.offClick();
@@ -452,30 +495,44 @@ class QRScanner {
             
             // Добавляем обработчик клика
             const sendHandler = () => {
-                console.log('🎯 MainButton clicked, sending data:', value);
+                console.log('🎯 MainButton clicked, sending data again:', value);
                 
-                // Отправляем текст
-                tg.sendData(value);
-                
-                // Показываем сообщение об успешной отправке
-                this.showStatus(`✅ Текст "${value}" отправлен в бота!`);
-                
-                // Скрываем кнопку
-                tg.MainButton.hide();
-                
-                // Автоматически закрываем приложение через 2 секунды
-                setTimeout(() => {
-                    console.log('🚪 Closing WebApp');
-                    tg.close();
-                }, 2000);
+                try {
+                    // При клике на MainButton отправляем еще раз
+                    tg.sendData(value);
+                    
+                    // И дублируем JSON вариант
+                    setTimeout(() => {
+                        const data = JSON.stringify({
+                            action: 'send_to_chat',
+                            text: value,
+                            format: format,
+                            timestamp: Date.now()
+                        });
+                        tg.sendData(data);
+                        console.log('📤 Sent additional JSON data:', data);
+                    }, 100);
+                    
+                    // Показываем сообщение об успешной отправке
+                    this.showStatus(`✅ Текст "${value}" отправлен в бота!`);
+                    
+                    // Скрываем кнопку
+                    tg.MainButton.hide();
+                    
+                    // Автоматически закрываем приложение через 3 секунды
+                    setTimeout(() => {
+                        console.log('🚪 Closing WebApp');
+                        tg.close();
+                    }, 3000);
+                    
+                } catch (error) {
+                    console.error('❌ Error in MainButton handler:', error);
+                    this.showStatus('❌ Ошибка отправки: ' + error.message);
+                }
             };
             
             tg.MainButton.onClick(sendHandler);
             console.log('✅ MainButton click handler attached');
-            
-            // Логируем для отладки
-            console.log('QR text sent to bot:', value);
-            console.log('MainButton configured and shown');
             
         } else {
             // Fallback для тестирования вне Telegram
