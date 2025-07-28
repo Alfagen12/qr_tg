@@ -8,23 +8,30 @@
     <meta name="keywords" content="QR scanner, telegram, barcode, камера, сканер">
     
     <!-- Open Graph для лучшего отображения в мессенджерах -->
-    <meta property="og:title" content="QR Code Scanner">
-    <meta property="og:description" content="Сканер QR-кодов для Telegram">
+    <meta property="og:title" content="QR Code Scanner v2">
+    <meta property="og:description" content="Сканер QR-кодов для Telegram - обновленная версия">
     <meta property="og:type" content="website">
     
-    <!-- Запрет кеширования для разработки -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <!-- Принудительная очистка кеша -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta name="cache-control" content="no-cache">
+    <meta name="expires" content="0">
+    <meta name="pragma" content="no-cache">
     
-    <title>QR Code Scanner</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <!-- Уникальная версия для принудительного обновления -->
+    <meta name="version" content="2.1.0">
+    <meta name="build-time" content="2025-01-28T18:31:00Z">
+    
+    <title>QR Code Scanner v2</title>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=2.1.0"></script>
+    <link rel="stylesheet" href="styles.css?v=2.1.0">
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <h1>QR Scanner</h1>
+            <h1>QR Scanner v2</h1>
             <p>Наведите камеру на QR-код для сканирования</p>
         </header>
 
@@ -62,6 +69,6 @@
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=2.1.0"></script>
 </body>
 </html>

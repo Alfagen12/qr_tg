@@ -1,3 +1,6 @@
+// QR Scanner v2.1.0 - Build: 2025-01-28T18:31:00Z
+console.log('🚀 QR Scanner v2.1.0 загружен!', new Date().toISOString());
+
 class QRScanner {
     constructor() {
         this.video = document.getElementById('videoElement');
