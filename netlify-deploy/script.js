@@ -417,28 +417,50 @@ class QRScanner {
     sendResultToBot() {
         const text = this.resultText.textContent;
         if (text) {
-            // Попробуем отправить как обычное сообщение
+            console.log('📤 sendResultToBot called with text:', text);
+            
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
                 
-                // Альтернативный способ - открыть чат и отправить сообщение
-                const botUsername = '@PayCryptoBot'; // Замените на имя вашего бота
-                const message = encodeURIComponent(`QR-код: ${text}`);
+                // Создаем сообщение для отправки
+                const message = `QR-код: ${text}`;
                 
-                // Попытка отправить через Web App
                 try {
+                    // Способ 1: sendData (может не работать если бот не настроен)
                     tg.sendData(text);
-                    this.showStatus(`✅ Данные отправлены в бота через WebApp`);
-                } catch (error) {
-                    console.error('WebApp sendData failed:', error);
+                    console.log('✅ Data sent via sendData');
                     
-                    // Fallback - попытаться открыть чат с ботом
-                    const telegramUrl = `tg://resolve?domain=${botUsername.replace('@', '')}&text=${message}`;
-                    window.open(telegramUrl, '_blank');
-                    this.showStatus(`📱 Открыт чат с ботом для отправки сообщения`);
+                    // Способ 2: Копируем в буфер и показываем инструкцию
+                    navigator.clipboard.writeText(text).then(() => {
+                        this.showStatus(`✅ Текст "${text}" скопирован в буфер обмена! Теперь:\n1. Перейдите в чат с ботом\n2. Вставьте текст (Ctrl+V)\n3. Отправьте сообщение`);
+                    }).catch(() => {
+                        this.showStatus(`📝 Отправьте этот текст боту: ${text}`);
+                    });
+                    
+                    // Способ 3: Попытка открыть чат (может не работать)
+                    setTimeout(() => {
+                        const telegramUrl = `tg://msg?text=${encodeURIComponent(message)}`;
+                        window.open(telegramUrl, '_blank');
+                        console.log('📱 Attempted to open Telegram with message');
+                    }, 500);
+                    
+                } catch (error) {
+                    console.error('❌ Error in sendResultToBot:', error);
+                    
+                    // Fallback - просто копируем текст
+                    navigator.clipboard.writeText(text).then(() => {
+                        this.showStatus(`� Ошибка отправки. Текст скопирован в буфер: "${text}". Вставьте его в чат с ботом.`);
+                    }).catch(() => {
+                        this.showStatus(`❌ Ошибка. Скопируйте текст вручную: ${text}`);
+                    });
                 }
             } else {
-                this.showStatus('❌ Telegram WebApp недоступен');
+                // Вне Telegram - просто копируем
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showStatus(`📋 Текст скопирован: "${text}"`);
+                }).catch(() => {
+                    this.showStatus(`📝 Скопируйте текст: ${text}`);
+                });
             }
         } else {
             this.showStatus('❌ Нет данных для отправки');
@@ -450,92 +472,60 @@ class QRScanner {
         
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
-            console.log('📱 Telegram WebApp available:', {
-                version: tg.version,
-                platform: tg.platform,
-                isExpanded: tg.isExpanded,
-                viewportHeight: tg.viewportHeight,
-                initData: tg.initData
-            });
+            console.log('📱 Telegram WebApp available');
             
-            // Отправляем данные разными способами для совместимости
-            try {
-                // Способ 1: Простая отправка текста
-                console.log('📤 Method 1: Sending raw text:', value);
-                tg.sendData(value);
-                
-                // Способ 2: Отправка как JSON
-                const jsonData = JSON.stringify({
-                    action: 'qr_scanned',
-                    text: value,
-                    format: format
-                });
-                console.log('📤 Method 2: Sending JSON:', jsonData);
-                
-                // Небольшая задержка и повторная отправка JSON
-                setTimeout(() => {
-                    tg.sendData(jsonData);
-                }, 100);
-                
-            } catch (error) {
-                console.error('❌ Error sending data:', error);
-                this.showStatus('❌ Ошибка отправки данных: ' + error.message);
-            }
-            
-            // Очищаем предыдущие обработчики кнопки
-            tg.MainButton.offClick();
-            console.log('🧹 Cleared previous MainButton handlers');
-            
-            // Настраиваем кнопку "Отправить в чат"
+            // Простейший способ - показать кнопку для отправки сообщения в чат
             tg.MainButton.setText('📤 Отправить в чат');
             tg.MainButton.color = '#2481cc';
             tg.MainButton.textColor = '#ffffff';
             tg.MainButton.show();
-            console.log('🔘 MainButton configured and shown');
             
-            // Добавляем обработчик клика
-            const sendHandler = () => {
-                console.log('🎯 MainButton clicked, sending data again:', value);
+            // Очищаем предыдущие обработчики
+            tg.MainButton.offClick();
+            
+            // При нажатии на кнопку - отправляем сообщение в чат
+            tg.MainButton.onClick(() => {
+                console.log('🎯 MainButton clicked, sending message to chat');
+                
+                // Отправляем сообщение прямо в чат через Telegram API
+                const message = `QR-код: ${value}`;
+                
+                // Используем Telegram схему для отправки сообщения
+                const telegramUrl = `tg://msg?text=${encodeURIComponent(message)}`;
                 
                 try {
-                    // При клике на MainButton отправляем еще раз
+                    // Попытка 1: через sendData
                     tg.sendData(value);
+                    console.log('📤 Sent via sendData:', value);
                     
-                    // И дублируем JSON вариант
-                    setTimeout(() => {
-                        const data = JSON.stringify({
-                            action: 'send_to_chat',
-                            text: value,
-                            format: format,
-                            timestamp: Date.now()
-                        });
-                        tg.sendData(data);
-                        console.log('📤 Sent additional JSON data:', data);
-                    }, 100);
+                    // Попытка 2: открыть диалог отправки сообщения
+                    window.open(telegramUrl, '_blank');
+                    console.log('� Opened Telegram message dialog');
                     
-                    // Показываем сообщение об успешной отправке
-                    this.showStatus(`✅ Текст "${value}" отправлен в бота!`);
+                    this.showStatus(`✅ Сообщение "${value}" готово к отправке!`);
                     
-                    // Скрываем кнопку
+                    // Скрываем кнопку и закрываем приложение
                     tg.MainButton.hide();
-                    
-                    // Автоматически закрываем приложение через 3 секунды
                     setTimeout(() => {
-                        console.log('🚪 Closing WebApp');
                         tg.close();
-                    }, 3000);
+                    }, 2000);
                     
                 } catch (error) {
-                    console.error('❌ Error in MainButton handler:', error);
-                    this.showStatus('❌ Ошибка отправки: ' + error.message);
+                    console.error('❌ Error:', error);
+                    
+                    // Fallback - просто копируем в буфер обмена
+                    navigator.clipboard.writeText(value).then(() => {
+                        this.showStatus(`📋 Текст "${value}" скопирован в буфер обмена. Вставьте его в чат с ботом.`);
+                    }).catch(() => {
+                        this.showStatus(`📝 Отправьте этот текст боту: ${value}`);
+                    });
                 }
-            };
+            });
             
-            tg.MainButton.onClick(sendHandler);
-            console.log('✅ MainButton click handler attached');
+            // Показываем инструкцию
+            this.showStatus(`✅ QR-код распознан! Нажмите "Отправить в чат" для отправки боту.`);
             
         } else {
-            // Fallback для тестирования вне Telegram
             console.log('❌ Telegram WebApp недоступен. QR текст:', value);
             this.showStatus('⚠️ Приложение работает вне Telegram. Распознанный текст: ' + value);
         }

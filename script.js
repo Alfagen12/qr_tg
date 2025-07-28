@@ -11,7 +11,9 @@ class QRScanner {
         
         // Элементы интерфейса
         this.startBtn = document.getElementById('startScan');
-        this.stopBtn = document.getElementById('stopScan');
+        this.stopBtn                    // Попытка 2: ОТКЛЮЧЕНО - вызывает диалог поделиться
+                    // window.open(telegramUrl, '_blank');
+                    // console.log('📱 Opened Telegram message dialog');document.getElementById('stopScan');
         this.switchBtn = document.getElementById('switchCamera');
         this.checkPermissionsBtn = document.getElementById('checkPermissions');
         this.requestPermissionsBtn = document.getElementById('requestPermissions');
@@ -437,12 +439,12 @@ class QRScanner {
                         this.showStatus(`📝 Отправьте этот текст боту: ${text}`);
                     });
                     
-                    // Способ 3: Попытка открыть чат (может не работать)
-                    setTimeout(() => {
-                        const telegramUrl = `tg://msg?text=${encodeURIComponent(message)}`;
-                        window.open(telegramUrl, '_blank');
-                        console.log('📱 Attempted to open Telegram with message');
-                    }, 500);
+                    // Способ 3: Попытка открыть чат (ОТКЛЮЧЕНО - вызывает диалог поделиться)
+                    // setTimeout(() => {
+                    //     const telegramUrl = `tg://msg?text=${encodeURIComponent(message)}`;
+                    //     window.open(telegramUrl, '_blank');
+                    //     console.log('📱 Attempted to open Telegram with message');
+                    // }, 500);
                     
                 } catch (error) {
                     console.error('❌ Error in sendResultToBot:', error);
