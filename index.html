@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2481cc">
+    <meta name="description" content="QR и штрихкод сканер для Telegram. Быстрое распознавание QR-кодов с помощью камеры.">
+    <meta name="keywords" content="QR scanner, telegram, barcode, камера, сканер">
+    
+    <!-- Open Graph для лучшего отображения в мессенджерах -->
+    <meta property="og:title" content="QR Code Scanner">
+    <meta property="og:description" content="Сканер QR-кодов для Telegram">
+    <meta property="og:type" content="website">
+    
+    <!-- Запрет кеширования для разработки -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <title>QR Code Scanner</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>QR Scanner</h1>
+            <p>Наведите камеру на QR-код для сканирования</p>
+        </header>
+
+        <main class="main">
+            <!-- Видео элемент для отображения камеры -->
+            <div class="camera-container">
+                <video id="videoElement" autoplay playsinline></video>
+                <canvas id="canvas" style="display: none;"></canvas>
+                <div class="scan-overlay">
+                    <div class="scan-frame"></div>
+                </div>
+            </div>
+
+            <!-- Кнопки управления -->
+            <div class="controls">
+                <button id="startScan" class="btn btn-primary">Начать сканирование</button>
+                <button id="stopScan" class="btn btn-secondary" disabled>Остановить</button>
+                <button id="switchCamera" class="btn btn-secondary" disabled>Переключить камеру</button>
+            </div>
+
+            <!-- Результат сканирования -->
+            <div id="result" class="result" style="display: none;">
+                <h3>Результат сканирования:</h3>
+                <div id="resultText" class="result-text"></div>
+                <div class="result-actions">
+                    <button id="copyResult" class="btn btn-small">Копировать</button>
+                    <button id="shareResult" class="btn btn-small">Поделиться</button>
+                </div>
+            </div>
+
+            <!-- Статус и ошибки -->
+            <div id="status" class="status"></div>
+            <div id="error" class="error" style="display: none;"></div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
