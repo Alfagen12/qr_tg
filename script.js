@@ -412,7 +412,7 @@ class QRScanner {
         // Дублируем через webhook
         this.sendToN8NWebhook(text, 'qr_code');
         
-        this.showStatus(`✅ QR-код "${text}" отправлен в n8n бота!`);
+        this.showStatus(`💰 Платеж "${text}" обработан!`);
         
         // Автоматически закрываем приложение через 2 секунды
         if (window.Telegram && window.Telegram.WebApp) {
