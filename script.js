@@ -373,8 +373,8 @@ class QRScanner {
         // Показываем результат
         this.showResult(barcode.rawValue, barcode.format);
         
-        // Отправляем данные в Telegram
-        this.sendToTelegram(barcode.rawValue, barcode.format);
+        // Отправляем данные в Telegram для n8n
+        this.sendToTelegramN8N(barcode.rawValue, barcode.format);
     }
     
     showResult(value, format) {
@@ -412,6 +412,39 @@ class QRScanner {
         }
     }
     
+    sendToTelegramN8N(value, format) {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            
+            // Просто отправляем распознанный текст как есть
+            tg.sendData(value);
+            
+            // Показываем кнопку "Отправить в чат"
+            tg.MainButton.setText('📤 Отправить в чат');
+            tg.MainButton.show();
+            tg.MainButton.onClick(() => {
+                // Отправляем текст еще раз для подтверждения
+                tg.sendData(value);
+                
+                // Показываем сообщение об успешной отправке
+                this.showStatus(`✅ Текст "${value}" отправлен в бота!`);
+                
+                // Автоматически закрываем приложение через 2 секунды
+                setTimeout(() => {
+                    tg.close();
+                }, 2000);
+            });
+            
+            // Логируем для отладки
+            console.log('QR text sent to bot:', value);
+            
+        } else {
+            // Fallback для тестирования вне Telegram
+            console.log('Telegram WebApp недоступен. QR текст:', value);
+            this.showStatus('⚠️ Приложение работает вне Telegram. Распознанный текст: ' + value);
+        }
+    }
+
     sendToTelegram(value, format) {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
