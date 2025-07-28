@@ -19,8 +19,6 @@ class QRScanner {
         this.resultText = document.getElementById('resultText');
         this.statusDiv = document.getElementById('status');
         this.errorDiv = document.getElementById('error');
-        this.copyBtn = document.getElementById('copyResult');
-        this.shareBtn = document.getElementById('shareResult');
         this.sendToBotBtn = document.getElementById('sendToBot');
         
         this.initEventListeners();
@@ -34,8 +32,6 @@ class QRScanner {
         this.switchBtn.addEventListener('click', () => this.switchCamera());
         this.checkPermissionsBtn.addEventListener('click', () => this.checkCameraPermissions());
         this.requestPermissionsBtn.addEventListener('click', () => this.requestCameraPermissions());
-        this.copyBtn.addEventListener('click', () => this.copyResult());
-        this.shareBtn.addEventListener('click', () => this.shareResult());
         this.sendToBotBtn.addEventListener('click', () => this.sendResultToBot());
     }
     
@@ -416,56 +412,39 @@ class QRScanner {
     
     sendResultToBot() {
         const text = this.resultText.textContent;
-        if (text) {
-            console.log('📤 sendResultToBot called with text:', text);
-            
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                
-                // Создаем сообщение для отправки
-                const message = `QR-код: ${text}`;
-                
-                try {
-                    // Способ 1: sendData (может не работать если бот не настроен)
-                    tg.sendData(text);
-                    console.log('✅ Data sent via sendData');
-                    
-                    // Способ 2: Копируем в буфер и показываем инструкцию
-                    navigator.clipboard.writeText(text).then(() => {
-                        this.showStatus(`✅ Текст "${text}" скопирован в буфер обмена! Теперь:\n1. Перейдите в чат с ботом\n2. Вставьте текст (Ctrl+V)\n3. Отправьте сообщение`);
-                    }).catch(() => {
-                        this.showStatus(`📝 Отправьте этот текст боту: ${text}`);
-                    });
-                    
-                    // Способ 3: Попытка открыть чат (ОТКЛЮЧЕНО - вызывает диалог поделиться)
-                    // setTimeout(() => {
-                    //     const telegramUrl = `tg://msg?text=${encodeURIComponent(message)}`;
-                    //     window.open(telegramUrl, '_blank');
-                    //     console.log('📱 Attempted to open Telegram with message');
-                    // }, 500);
-                    
-                } catch (error) {
-                    console.error('❌ Error in sendResultToBot:', error);
-                    
-                    // Fallback - просто копируем текст
-                    navigator.clipboard.writeText(text).then(() => {
-                        this.showStatus(`� Ошибка отправки. Текст скопирован в буфер: "${text}". Вставьте его в чат с ботом.`);
-                    }).catch(() => {
-                        this.showStatus(`❌ Ошибка. Скопируйте текст вручную: ${text}`);
-                    });
-                }
-            } else {
-                // Вне Telegram - просто копируем
-                navigator.clipboard.writeText(text).then(() => {
-                    this.showStatus(`📋 Текст скопирован: "${text}"`);
-                }).catch(() => {
-                    this.showStatus(`📝 Скопируйте текст: ${text}`);
-                });
-            }
-        } else {
+        if (!text) {
             this.showStatus('❌ Нет данных для отправки');
+            return;
+        }
+
+        console.log('📤 Отправка в n8n бота:', text);
+        this.showStatus('🔄 Отправляем данные в n8n...');
+        
+        // Отправляем через оба способа для надежности
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            try {
+                tg.sendData(text);
+                console.log('✅ Sent via tg.sendData');
+            } catch (error) {
+                console.error('❌ Error with tg.sendData:', error);
+            }
+        }
+        
+        // Дублируем через webhook
+        this.sendToN8NWebhook(text, 'qr_code');
+        
+        this.showStatus(`✅ QR-код "${text}" отправлен в n8n бота!`);
+        
+        // Автоматически закрываем приложение через 2 секунды
+        if (window.Telegram && window.Telegram.WebApp) {
+            setTimeout(() => {
+                window.Telegram.WebApp.close();
+            }, 2000);
         }
     }
+
+
     
     sendToTelegramN8N(value, format) {
         console.log('🚀 sendToTelegramN8N called with:', { value, format });
