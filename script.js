@@ -1,5 +1,5 @@
-// QR Scanner v3.3.0 - Universal version for all devices
-console.log('🚀 QR Scanner v3.3.0 Universal загружен!', new Date().toISOString());
+// QR Scanner v3.3.1 - Universal Fixed version
+console.log('🚀 QR Scanner v3.3.1 Universal загружен!', new Date().toISOString());
 
 class QRScanner {
     constructor() {
@@ -174,7 +174,7 @@ class QRScanner {
             console.error('Ошибка запроса разрешений:', error);
             
             if (error.name === 'NotAllowedError') {
-                this.showError('❌ Доступ к камере отклонен. Инструкция для разрешения:\n\n📱 На мобильном: Настройки Telegram → Конфиденциальность → Камера → Разрешить\n\n💻 В браузере: нажмите на иконку 🔒 или 📷 рядом с адресом сайта');
+                this.showError('❌ Доступ к камере отклонен. Инструкция для разрешения:\\n\\n📱 На мобильном: Настройки Telegram → Конфиденциальность → Камера → Разрешить\\n\\n💻 В браузере: нажмите на иконку 🔒 или 📷 рядом с адресом сайта');
             } else {
                 this.showError(`Ошибка: ${error.message}`);
             }
@@ -191,216 +191,159 @@ class QRScanner {
                 return;
             }
             
-            // Определяем платформу
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-            const isAndroid = /Android/.test(navigator.userAgent);
-            
-            this.showStatus(`Устройство: ${isMobile ? 'Мобильное' : 'Десктоп'} ${isIOS ? '(iOS)' : isAndroid ? '(Android)' : ''}`);
-            
-            // Проверяем разрешения (не все браузеры поддерживают)
-            if (navigator.permissions && !isIOS) {
-                try {
-                    const permission = await navigator.permissions.query({ name: 'camera' });
-                    this.showStatus(`Статус разрешения камеры: ${permission.state}`);
-                    
-                    if (permission.state === 'denied') {
-                        if (isMobile) {
-                            this.showError('Доступ к камере запрещен. Откройте настройки Telegram → Конфиденциальность и безопасность → Камера → Разрешить.');
-                        } else {
-                            this.showError('Доступ к камере запрещен. Измените настройки в браузере или нажмите на иконку камеры в адресной строке.');
-                        }
-                        return;
-                    }
-                } catch (permError) {
-                    console.log('Permissions API недоступен:', permError);
-                }
-            }
-            
-            // Проверяем доступные камеры
+            // Простая проверка доступа
             const devices = await navigator.mediaDevices.enumerateDevices();
             const cameras = devices.filter(device => device.kind === 'videoinput');
             
             if (cameras.length === 0) {
-                this.showError('Камеры не найдены. Убедитесь, что камера не заблокирована и не используется другим приложением.');
+                this.showError('Камера не найдена');
                 return;
             }
             
-            // Проверяем Telegram WebApp специфические особенности
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                this.showStatus(`✅ Telegram WebApp активен. Версия: ${tg.version || 'неизвестно'}`);
-                
-                if (tg.platform === 'ios' || tg.platform === 'android') {
-                    this.showStatus(`Платформа: ${tg.platform}. Найдено камер: ${cameras.length}`);
-                }
-            }
-            
-            this.showStatus(`✅ Найдено камер: ${cameras.length}. Разрешения в порядке. ${isMobile ? 'Убедитесь что разрешили камеру в настройках Telegram!' : 'Можно начинать сканирование!'}`);
+            this.showStatus(`📷 Найдено камер: ${cameras.length}`);
             this.hideError();
             
         } catch (error) {
             console.error('Ошибка проверки разрешений:', error);
-            this.showError(`Ошибка проверки: ${error.message}. Попробуйте обновить Telegram или перезапустить приложение.`);
+            this.showError(`Ошибка проверки камеры: ${error.message}`);
         }
     }
     
     checkBarcodeDetectorSupport() {
-        if (!('BarcodeDetector' in window)) {
-            this.showError('BarcodeDetector API не поддерживается в вашем браузере. Попробуйте использовать Chrome или Edge.');
-            this.startBtn.disabled = true;
-            return false;
+        try {
+            if ('BarcodeDetector' in window) {
+                this.barcodeDetector = new BarcodeDetector({
+                    formats: ['qr_code', 'ean_13', 'code_128', 'data_matrix']
+                });
+                this.showStatus('✅ BarcodeDetector API поддерживается');
+                console.log('✅ BarcodeDetector инициализирован');
+            } else {
+                this.showStatus('⚠️ BarcodeDetector не поддерживается, используется ZXing');
+            }
+        } catch (error) {
+            console.error('Ошибка инициализации BarcodeDetector:', error);
+            this.showError('Ошибка инициализации сканера');
         }
-        return true;
     }
     
     async getCameras() {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
             this.cameras = devices.filter(device => device.kind === 'videoinput');
+            console.log('📷 Найдено камер:', this.cameras.length);
             
             if (this.cameras.length > 1) {
-                this.switchBtn.disabled = false;
+                this.switchBtn.style.display = 'inline-block';
             }
             
-            return this.cameras.length > 0;
+            return this.cameras;
         } catch (error) {
             console.error('Ошибка получения списка камер:', error);
-            return false;
+            return [];
         }
     }
     
     async startScanning() {
-        if (!this.checkBarcodeDetectorSupport()) return;
-        
         try {
-            this.showStatus('Инициализация камеры...');
+            console.log('📷 Starting QR scanning...');
+            this.showStatus('Запуск сканирования...');
             
-            // Получаем список камер
-            const hasCameras = await this.getCameras();
-            if (!hasCameras) {
-                this.showError('Камеры не найдены');
+            if (this.isScanning) {
+                console.log('⚠️ Scanning already in progress');
                 return;
             }
             
-            // Определяем мобильное устройство
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            // Получаем список камер
+            await this.getCameras();
             
-            // Настройки для мобильных устройств
-            let constraints;
-            if (isMobile) {
-                // Для мобильных устройств используем более простые настройки
-                constraints = {
-                    video: {
-                        facingMode: { ideal: 'environment' }, // Предпочитаем заднюю камеру
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                };
-            } else {
-                // Для десктопа более продвинутые настройки
-                constraints = {
-                    video: {
-                        facingMode: 'environment',
-                        width: { ideal: 640, max: 1280 },
-                        height: { ideal: 480, max: 720 }
-                    }
-                };
-            }
-            
-            // Пробуем разные варианты доступа к камере
-            try {
-                this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (error) {
-                console.log('Основная камера недоступна, пробуем альтернативы:', error);
-                
-                if (isMobile) {
-                    // Для мобильных: пробуем переднюю камеру
-                    try {
-                        constraints.video.facingMode = { ideal: 'user' };
-                        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    } catch (error2) {
-                        // Последняя попытка - любая камера
-                        constraints = { video: { width: 640, height: 480 } };
-                        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    }
-                } else {
-                    // Для десктопа: упрощаем настройки
-                    constraints = { video: true };
-                    this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            // Настройки камеры в зависимости от устройства
+            const constraints = this.deviceInfo.isPOCO ? {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    frameRate: { ideal: 15, max: 30 }
                 }
-            }
+            } : {
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
             
+            console.log('📷 Camera constraints:', constraints);
+            
+            // Запрашиваем доступ к камере
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            // Подключаем поток к видео
             this.video.srcObject = this.stream;
+            this.video.style.display = 'block';
             
             // Ждем загрузки видео
-            await new Promise((resolve, reject) => {
+            await new Promise((resolve) => {
                 this.video.onloadedmetadata = () => {
-                    // Принудительно запускаем видео на мобильных
-                    this.video.play().then(resolve).catch(reject);
+                    this.video.play();
+                    resolve();
                 };
-                this.video.onerror = reject;
-                
-                // Таймаут на случай проблем
-                setTimeout(() => reject(new Error('Таймаут загрузки видео')), 10000);
             });
             
             // Настраиваем canvas
-            this.canvas.width = this.video.videoWidth || 640;
-            this.canvas.height = this.video.videoHeight || 480;
+            this.canvas.width = this.video.videoWidth;
+            this.canvas.height = this.video.videoHeight;
             
-            // Инициализируем BarcodeDetector
-            this.barcodeDetector = new BarcodeDetector({
-                formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'code_93', 'codabar', 'itf', 'upc_a', 'upc_e']
-            });
-            
+            // Запускаем сканирование
             this.isScanning = true;
-            this.startBtn.disabled = true;
-            this.stopBtn.disabled = false;
-            this.switchBtn.disabled = this.cameras.length <= 1;
+            this.startBtn.style.display = 'none';
+            this.stopBtn.style.display = 'inline-block';
             
-            this.showStatus('Сканирование активно. Наведите камеру на QR-код.');
+            this.showStatus('📷 Сканирование активно. Наведите на QR-код.');
             this.hideError();
-            this.hideResult();
             
-            // Добавляем класс анимации
-            document.querySelector('.scan-frame').classList.add('scanning');
-            
-            // Начинаем сканирование
+            // Запускаем детекцию
             this.startDetection();
             
         } catch (error) {
-            console.error('Ошибка запуска камеры:', error);
-            let errorMessage = 'Ошибка доступа к камере';
-            
-            if (error.name === 'NotAllowedError') {
-                errorMessage = 'Доступ к камере запрещен. В Telegram: Настройки → Конфиденциальность → Камера → Разрешить для Telegram.';
-            } else if (error.name === 'NotFoundError') {
-                errorMessage = 'Камера не найдена. Убедитесь, что устройство имеет камеру.';
-            } else if (error.name === 'NotReadableError') {
-                errorMessage = 'Камера занята другим приложением. Закройте другие приложения с камерой и попробуйте снова.';
-            } else if (error.name === 'OverconstrainedError') {
-                errorMessage = 'Запрошенные параметры камеры не поддерживаются. Попробуйте обновить приложение Telegram.';
-            } else if (error.name === 'NotSupportedError') {
-                errorMessage = 'Доступ к камере не поддерживается в данной версии Telegram. Обновите приложение.';
-            } else if (error.message.includes('Таймаут')) {
-                errorMessage = 'Камера долго инициализируется. Попробуйте еще раз или перезапустите Telegram.';
-            } else {
-                errorMessage = `Ошибка камеры: ${error.message}`;
-            }
-            
-            this.showError(errorMessage);
-            
-            // Показываем специальные советы для мобильных
-            if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                this.showStatus('📱 Советы для мобильного: 1) Разрешите камеру в настройках Telegram 2) Обновите Telegram до последней версии 3) Перезапустите приложение 4) Попробуйте кнопку "Проверить разрешения"');
-            } else {
-                this.showStatus('💡 Советы: 1) Разрешите доступ к камере 2) Используйте HTTPS 3) Попробуйте Chrome/Edge 4) Закройте другие приложения с камерой');
-            }
+            console.error('❌ Error starting camera:', error);
+            this.handleCameraError(error);
         }
     }
     
+    handleCameraError(error) {
+        let errorMessage = '❌ Ошибка доступа к камере';
+        let suggestions = [];
+        
+        if (error.name === 'NotAllowedError') {
+            errorMessage = '🚫 Доступ к камере запрещен';
+            suggestions = [
+                'Разрешите доступ к камере в настройках браузера',
+                'На POCO: Настройки → Приложения → Telegram → Разрешения → Камера',
+                'Перезапустите Telegram после изменения разрешений'
+            ];
+        } else if (error.name === 'NotFoundError') {
+            errorMessage = '📷 Камера не найдена';
+            suggestions = [
+                'Проверьте, что камера не используется другим приложением',
+                'Перезапустите телефон'
+            ];
+        } else if (error.name === 'NotSupportedError') {
+            errorMessage = '⚠️ Браузер не поддерживается';
+            suggestions = [
+                'Обновите Telegram до последней версии',
+                'Попробуйте открыть в Chrome браузере'
+            ];
+        }
+        
+        this.showError(errorMessage + (suggestions.length ? '\\n\\n' + suggestions.join('\\n') : ''));
+        this.isScanning = false;
+        this.startBtn.style.display = 'inline-block';
+        this.stopBtn.style.display = 'none';
+    }
+    
     stopScanning() {
+        console.log('🛑 Stopping QR scanning...');
+        
         this.isScanning = false;
         
         if (this.scanInterval) {
@@ -413,15 +356,19 @@ class QRScanner {
             this.stream = null;
         }
         
-        this.video.srcObject = null;
+        if (this.zxingReader) {
+            try {
+                this.zxingReader.reset();
+            } catch (e) {
+                console.log('ZXing reset error (ignored):', e);
+            }
+        }
         
-        this.startBtn.disabled = false;
-        this.stopBtn.disabled = true;
-        this.switchBtn.disabled = true;
+        this.video.style.display = 'none';
+        this.startBtn.style.display = 'inline-block';
+        this.stopBtn.style.display = 'none';
         
-        document.querySelector('.scan-frame').classList.remove('scanning');
-        
-        this.showStatus('Сканирование остановлено');
+        this.showStatus('📷 Сканирование остановлено');
     }
     
     async switchCamera() {
@@ -431,7 +378,7 @@ class QRScanner {
         
         if (this.isScanning) {
             this.stopScanning();
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 500));
             this.startScanning();
         }
     }
@@ -439,10 +386,17 @@ class QRScanner {
     startDetection() {
         if (!this.isScanning) return;
         
-        if (this.useNativeAPI) {
+        if (this.useNativeAPI && this.barcodeDetector) {
             this.startNativeDetection();
         } else if (this.useZXing) {
             this.startZXingDetection();
+        } else {
+            // Fallback - попробуем снова загрузить ZXing
+            this.loadZXing().then(() => {
+                if (this.isScanning) {
+                    this.startZXingDetection();
+                }
+            });
         }
     }
     
@@ -451,10 +405,7 @@ class QRScanner {
             if (!this.isScanning || this.video.videoWidth === 0) return;
             
             try {
-                // Копируем кадр из видео в canvas
                 this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-                
-                // Детектируем штрихкоды
                 const barcodes = await this.barcodeDetector.detect(this.canvas);
                 
                 if (barcodes.length > 0) {
@@ -471,21 +422,12 @@ class QRScanner {
         try {
             console.log('🔍 Starting ZXing detection...');
             
-            // Используем ZXing для сканирования
-            const result = await this.zxingReader.decodeOnceFromVideoDevice(undefined, this.video);
-            
-            if (result) {
-                console.log('✅ ZXing detected:', result.getText());
-                this.onBarcodeDetected({ 
-                    rawValue: result.getText(), 
-                    format: result.getBarcodeFormat() 
-                });
+            if (!this.zxingReader) {
+                console.error('❌ ZXing reader not initialized');
+                return;
             }
             
-        } catch (error) {
-            console.error('❌ ZXing detection error:', error);
-            
-            // Fallback - пробуем периодическое сканирование
+            // Используем ZXing для непрерывного сканирования
             this.scanInterval = setInterval(async () => {
                 if (!this.isScanning || this.video.videoWidth === 0) return;
                 
@@ -501,11 +443,13 @@ class QRScanner {
                         });
                     }
                 } catch (scanError) {
-                    // Тихо игнорируем ошибки сканирования
+                    // Тихо игнорируем ошибки сканирования (нет QR-кода в кадре)
                 }
-            }, 500); // Сканируем каждые 500мс для ZXing
+            }, 300); // Сканируем каждые 300мс для ZXing
+            
+        } catch (error) {
+            console.error('❌ ZXing detection error:', error);
         }
-    }
     }
     
     onBarcodeDetected(barcode) {
@@ -520,31 +464,27 @@ class QRScanner {
         
         // Показываем результат
         this.showResult(barcode.rawValue, barcode.format || 'qr_code');
-        this.showResult(barcode.rawValue, barcode.format);
-        
-        // Отправляем данные в Telegram для n8n
-        this.sendToTelegramN8N(barcode.rawValue, barcode.format);
     }
     
     showResult(value, format) {
+        this.lastResult = { value, format };
         this.resultText.textContent = value;
         this.resultDiv.style.display = 'block';
-        // Убираем сложный статус, показываем просто результат
+        
+        console.log('📋 QR результат:', value);
     }
     
     hideResult() {
         this.resultDiv.style.display = 'none';
     }
-
+    
     sendResultToBot() {
-        const text = this.resultText.textContent;
-        if (!text) {
-            this.showStatus('❌ Нет данных для отправки');
+        if (!this.lastResult) {
+            this.showError('Нет данных для отправки');
             return;
         }
-
-        console.log('📤 Отправка в n8n бота:', text);
-        this.showStatus('🔄 Отправляем данные в n8n...');
+        
+        const text = this.lastResult.value;
         
         // Отправляем через оба способа для надежности
         if (window.Telegram && window.Telegram.WebApp) {
@@ -569,98 +509,6 @@ class QRScanner {
             }, 2000);
         }
     }
-
-
-    
-    sendToTelegramN8N(value, format) {
-        console.log('🚀 sendToTelegramN8N called with:', { value, format });
-        
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            console.log('📱 Telegram WebApp available');
-            
-            // Простейший способ - показать кнопку для отправки сообщения в чат
-            tg.MainButton.setText('📤 Отправить в чат');
-            tg.MainButton.color = '#2481cc';
-            tg.MainButton.textColor = '#ffffff';
-            tg.MainButton.show();
-            
-            // Очищаем предыдущие обработчики
-            tg.MainButton.offClick();
-            
-            // При нажатии на кнопку - отправляем сообщение в чат
-            tg.MainButton.onClick(() => {
-                console.log('🎯 MainButton clicked, sending message to chat');
-                
-                // Отправляем сообщение прямо в чат через Telegram API
-                const message = `QR-код: ${value}`;
-                
-                // Используем Telegram схему для отправки сообщения
-                const telegramUrl = `tg://msg?text=${encodeURIComponent(message)}`;
-                
-                try {
-                    // Попытка 1: через sendData
-                    tg.sendData(value);
-                    console.log('📤 Sent via sendData:', value);
-                    
-                    // Попытка 2: открыть диалог отправки сообщения
-                    window.open(telegramUrl, '_blank');
-                    console.log('� Opened Telegram message dialog');
-                    
-                    this.showStatus(`✅ Сообщение "${value}" готово к отправке!`);
-                    
-                    // Скрываем кнопку и закрываем приложение
-                    tg.MainButton.hide();
-                    setTimeout(() => {
-                        tg.close();
-                    }, 2000);
-                    
-                } catch (error) {
-                    console.error('❌ Error:', error);
-                    
-                    // Fallback - просто копируем в буфер обмена
-                    navigator.clipboard.writeText(value).then(() => {
-                        this.showStatus(`📋 Текст "${value}" скопирован в буфер обмена. Вставьте его в чат с ботом.`);
-                    }).catch(() => {
-                        this.showStatus(`📝 Отправьте этот текст боту: ${value}`);
-                    });
-                }
-            });
-            
-            // Показываем инструкцию
-            this.showStatus(`✅ QR-код распознан! Нажмите "Отправить в чат" для отправки боту.`);
-            
-        } else {
-            console.log('❌ Telegram WebApp недоступен. QR текст:', value);
-            this.showStatus('⚠️ Приложение работает вне Telegram. Распознанный текст: ' + value);
-        }
-    }
-
-    sendToTelegram(value, format) {
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            
-            // Отправляем данные боту
-            tg.sendData(JSON.stringify({
-                action: 'qr_scanned',
-                value: value,
-                format: format,
-                timestamp: Date.now()
-            }));
-  
-            // Показываем кнопку "Закрыть"
-            tg.MainButton.setText('Отправить результат');
-            tg.MainButton.show();
-            tg.MainButton.onClick(() => {
-                tg.sendData(JSON.stringify({
-                    action: 'send_result',
-                    value: value,
-                    format: format
-                }));
-                tg.close();
-            });
-        }
-    }
     
     showStatus(message) {
         this.statusDiv.textContent = message;
@@ -668,7 +516,7 @@ class QRScanner {
     }
     
     showError(message) {
-        this.errorDiv.textContent = message;
+        this.errorDiv.innerHTML = message.replace(/\\n/g, '<br>');
         this.errorDiv.style.display = 'block';
     }
     
@@ -676,9 +524,7 @@ class QRScanner {
         this.errorDiv.style.display = 'none';
     }
     
-    // Новый метод для отправки через n8n webhook
     async sendToN8NWebhook(qrText, format) {
-        // Замените на ваш реальный URL webhook в n8n
         const webhookUrl = 'https://codanetn8n.ru/webhook/04a25c25-4aa8-4688-b395-a1681641552b';
         
         const data = {
@@ -703,7 +549,6 @@ class QRScanner {
             });
             
             console.log('🔄 Response status:', response.status);
-            console.log('🔄 Response headers:', [...response.headers.entries()]);
             
             const responseText = await response.text();
             console.log('📨 Response body:', responseText);
@@ -723,15 +568,6 @@ class QRScanner {
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', () => {
-    new QRScanner();
+    console.log('🚀 Initializing QR Scanner...');
+    window.qrScanner = new QRScanner();
 });
-
-// Обработка состояния приложения
-window.addEventListener('beforeunload', () => {
-    if (window.qrScanner && window.qrScanner.isScanning) {
-        window.qrScanner.stopScanning();
-    }
-});
-
-// Экспорт для глобального доступа
-window.QRScanner = QRScanner;
