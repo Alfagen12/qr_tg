@@ -1,0 +1,31 @@
+{
+  "name": "telegram-qr-scanner",
+  "version": "3.3.0",
+  "description": "Universal QR Scanner Web App for Telegram - works on iPhone, Samsung, POCO, Realme",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Static site - no build needed'",
+    "start": "echo 'Static site deployed to Netlify'"
+  },
+  "keywords": [
+    "telegram",
+    "qr-code",
+    "barcode-detector",
+    "zxing",
+    "universal",
+    "web-app",
+    "camera",
+    "scanner",
+    "iphone",
+    "android"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
