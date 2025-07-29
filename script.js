@@ -1,5 +1,5 @@
-// QR Scanner v3.0.0 - Рабочая версия со всеми функциями
-console.log('🚀 QR Scanner v3.0.0 загружен!', new Date().toISOString());
+// QR Scanner v3.3.0 - Universal version for all devices
+console.log('🚀 QR Scanner v3.3.0 Universal загружен!', new Date().toISOString());
 
 class QRScanner {
     constructor() {
@@ -11,6 +11,15 @@ class QRScanner {
         this.cameras = [];
         this.currentCameraIndex = 0;
         this.scanInterval = null;
+        
+        // Универсальная поддержка
+        this.useNativeAPI = false;
+        this.useZXing = false;
+        this.zxingReader = null;
+        this.lastResult = null;
+        
+        // Детекция устройства
+        this.deviceInfo = this.detectDevice();
         
         // Элементы интерфейса
         this.startBtn = document.getElementById('startScan');
@@ -26,7 +35,94 @@ class QRScanner {
         
         this.initEventListeners();
         this.initTelegram();
-        this.checkBarcodeDetectorSupport();
+        this.initializeScanner();
+    }
+    
+    detectDevice() {
+        const ua = navigator.userAgent;
+        const device = {
+            isIOS: /iPad|iPhone|iPod/.test(ua),
+            isPOCO: /POCO|MIUI|Xiaomi/i.test(ua),
+            isSamsung: /Samsung/i.test(ua),
+            isRealme: /RMX|Realme/i.test(ua),
+            isAndroid: /Android/i.test(ua),
+            browser: this.detectBrowser(),
+            version: this.getOSVersion()
+        };
+        
+        console.log('📱 Device detected:', device);
+        return device;
+    }
+    
+    detectBrowser() {
+        const ua = navigator.userAgent;
+        if (ua.includes('Chrome')) return 'Chrome';
+        if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+        if (ua.includes('Firefox')) return 'Firefox';
+        if (ua.includes('Edge')) return 'Edge';
+        return 'Unknown';
+    }
+    
+    getOSVersion() {
+        const ua = navigator.userAgent;
+        const match = ua.match(/(?:Android|iPhone OS|iPad OS)\s([\d_\.]+)/);
+        return match ? match[1].replace(/_/g, '.') : 'Unknown';
+    }
+    
+    async initializeScanner() {
+        console.log('🔍 Initializing universal QR scanner...');
+        
+        // Проверяем нативную поддержку BarcodeDetector
+        if ('BarcodeDetector' in window) {
+            console.log('✅ Native BarcodeDetector available');
+            this.useNativeAPI = true;
+            await this.checkBarcodeDetectorSupport();
+        } else {
+            console.log('⚠️ BarcodeDetector not available, loading ZXing...');
+            await this.loadZXing();
+        }
+        
+        this.showDeviceInfo();
+    }
+    
+    async loadZXing() {
+        try {
+            console.log('📦 Loading ZXing library...');
+            
+            // Создаем и загружаем скрипт ZXing
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@zxing/library@latest/umd/index.min.js';
+            document.head.appendChild(script);
+            
+            await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+            });
+            
+            // Инициализируем ZXing reader
+            this.zxingReader = new ZXing.BrowserQRCodeReader();
+            this.useZXing = true;
+            
+            console.log('✅ ZXing library loaded successfully');
+            this.showStatus('📱 Универсальный сканер готов (ZXing)');
+            
+        } catch (error) {
+            console.error('❌ Failed to load ZXing:', error);
+            this.showError('Не удалось загрузить библиотеку сканирования');
+        }
+    }
+    
+    showDeviceInfo() {
+        const info = document.createElement('div');
+        info.className = 'device-info';
+        info.innerHTML = `
+            <div style="background: #e3f2fd; border: 1px solid #90caf9; padding: 10px; margin: 10px; border-radius: 8px; font-size: 12px;">
+                <strong>📱 Устройство:</strong> ${this.deviceInfo.isPOCO ? 'POCO/MIUI' : this.deviceInfo.isIOS ? 'iPhone/iPad' : this.deviceInfo.isSamsung ? 'Samsung' : this.deviceInfo.isRealme ? 'Realme' : 'Android'}<br>
+                <strong>🌐 Браузер:</strong> ${this.deviceInfo.browser}<br>
+                <strong>🔍 Сканер:</strong> ${this.useNativeAPI ? 'Native BarcodeDetector' : 'ZXing Universal'}
+            </div>
+        `;
+        document.body.insertBefore(info, document.body.firstChild);
     }
     
     initEventListeners() {
@@ -343,6 +439,14 @@ class QRScanner {
     startDetection() {
         if (!this.isScanning) return;
         
+        if (this.useNativeAPI) {
+            this.startNativeDetection();
+        } else if (this.useZXing) {
+            this.startZXingDetection();
+        }
+    }
+    
+    startNativeDetection() {
         this.scanInterval = setInterval(async () => {
             if (!this.isScanning || this.video.videoWidth === 0) return;
             
@@ -355,12 +459,53 @@ class QRScanner {
                 
                 if (barcodes.length > 0) {
                     const barcode = barcodes[0];
-                    this.onBarcodeDetected(barcode);
+                    this.onBarcodeDetected({ rawValue: barcode.rawValue, format: barcode.format });
                 }
             } catch (error) {
-                console.error('Ошибка детекции:', error);
+                console.error('❌ Native detection error:', error);
             }
-        }, 100); // Сканируем каждые 100мс
+        }, 100);
+    }
+    
+    async startZXingDetection() {
+        try {
+            console.log('🔍 Starting ZXing detection...');
+            
+            // Используем ZXing для сканирования
+            const result = await this.zxingReader.decodeOnceFromVideoDevice(undefined, this.video);
+            
+            if (result) {
+                console.log('✅ ZXing detected:', result.getText());
+                this.onBarcodeDetected({ 
+                    rawValue: result.getText(), 
+                    format: result.getBarcodeFormat() 
+                });
+            }
+            
+        } catch (error) {
+            console.error('❌ ZXing detection error:', error);
+            
+            // Fallback - пробуем периодическое сканирование
+            this.scanInterval = setInterval(async () => {
+                if (!this.isScanning || this.video.videoWidth === 0) return;
+                
+                try {
+                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                    const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                    
+                    const result = await this.zxingReader.decodeFromImageData(imageData);
+                    if (result) {
+                        this.onBarcodeDetected({ 
+                            rawValue: result.getText(), 
+                            format: result.getBarcodeFormat() 
+                        });
+                    }
+                } catch (scanError) {
+                    // Тихо игнорируем ошибки сканирования
+                }
+            }, 500); // Сканируем каждые 500мс для ZXing
+        }
+    }
     }
     
     onBarcodeDetected(barcode) {
@@ -371,7 +516,10 @@ class QRScanner {
             navigator.vibrate(200);
         }
         
+        console.log('✅ QR detected:', barcode.rawValue, 'Format:', barcode.format);
+        
         // Показываем результат
+        this.showResult(barcode.rawValue, barcode.format || 'qr_code');
         this.showResult(barcode.rawValue, barcode.format);
         
         // Отправляем данные в Telegram для n8n
